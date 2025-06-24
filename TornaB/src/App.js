@@ -14,15 +14,13 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-// Routes imports
 import userRouter from './routes/user.routes.js';
 import projectRouter from './routes/project.routes.js';
-import documentRouter from './routes/document.routes.js'; // Import the new project router
+import documentRouter from './routes/document.routes.js';
 
-// Routes declaration
-app.use("/api/v1/users", userRouter);
-app.use("/api/v1/projects", projectRouter); 
-app.use("/api/v1/documents", documentRouter); // Use the document router
-// Declare the project router
+// Mount all routers at /api/v1
+app.use("/api/v1", userRouter);
+app.use("/api/v1", projectRouter);
+app.use("/api/v1", documentRouter);
 
 export { app };

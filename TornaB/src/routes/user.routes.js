@@ -1,3 +1,4 @@
+// routes/user.routes.js
 import express from "express";
 import {
   registerUser,
@@ -5,32 +6,32 @@ import {
   logoutUser,
   refreshAccessToken,
   getCurrentUser,
-  updateUserProfile,          // New import
-  updateDailyGoalAndWordCount, // New import
-  markNotificationAsRead,     // New import
-  markAllNotificationsAsRead  // New import
-} from "../controller/user.controller.js"; // Ensure all new controllers are imported
+  updateUserProfile,
+  updateDailyGoalAndWordCount,
+  markNotificationAsRead,
+  markAllNotificationsAsRead
+} from "../controller/user.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
 // Public routes (no authentication required)
-router.post("/register", registerUser);
-router.post("/login", loginUser);
-router.post("/refresh-token", refreshAccessToken);
+router.post("/users/register", registerUser);
+router.post("/users/login", loginUser);
+router.post("/users/refresh-token", refreshAccessToken);
 
 // Protected routes (authentication required using authMiddleware)
-router.post("/logout", authMiddleware, logoutUser);
-router.get("/current-user", authMiddleware, getCurrentUser);
+router.post("/users/logout", authMiddleware, logoutUser);
+router.get("/users/current-user", authMiddleware, getCurrentUser);
 
 // User Profile and Preferences
-router.put("/profile", authMiddleware, updateUserProfile); // To update general profile info and preferences
+router.put("/users/profile", authMiddleware, updateUserProfile);
 
 // User Dashboard Data (Daily Goal, Word Count)
-router.put("/daily-goal", authMiddleware, updateDailyGoalAndWordCount); // To update daily goal and today's word count
+router.put("/users/daily-goal", authMiddleware, updateDailyGoalAndWordCount);
 
 // Notifications
-router.put("/notifications/:notificationId/read", authMiddleware, markNotificationAsRead); // Mark specific notification as read
-router.put("/notifications/read-all", authMiddleware, markAllNotificationsAsRead); // Mark all notifications as read
+router.put("/users/notifications/:notificationId/read", authMiddleware, markNotificationAsRead);
+router.put("/users/notifications/read-all", authMiddleware, markAllNotificationsAsRead);
 
 export default router;

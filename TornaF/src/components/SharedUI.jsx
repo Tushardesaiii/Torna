@@ -4,6 +4,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { XCircleIcon } from "@heroicons/react/24/outline"; // Make sure to import necessary icons
+import CreateDocumentModal from './CreateDocumentModal.jsx';
+
+
 
 export const Card = React.memo(({ children, className = "", noPadding = false, ...props }) => (
     <div
@@ -179,47 +182,69 @@ export const Tooltip = React.memo(({ children, text, className = "", position = 
     );
 });
 
-export const Modal = React.memo(({ isOpen, onClose, title, children, className = "", disableBackgroundDismiss = false }) => {
+export const Modal = React.memo(
+  ({
+    isOpen,
+    onClose,
+    title,
+    children,
+    className = "",
+    disableBackgroundDismiss = false,
+  }) => {
     if (!isOpen) return null;
 
     const modalContentRef = useRef(null);
 
     const handleContentClick = useCallback((e) => {
-        e.stopPropagation();
+      e.stopPropagation();
     }, []);
 
-    const handleOverlayClick = useCallback((e) => {
+    const handleOverlayClick = useCallback(
+      (e) => {
         if (e.target === e.currentTarget && !disableBackgroundDismiss) {
-            onClose();
+          onClose();
         }
-    }, [onClose, disableBackgroundDismiss]);
-
+      },
+      [onClose, disableBackgroundDismiss]
+    );
 
     return (
-        <div className="fixed inset-0 bg-black/75 z-50 flex justify-center items-center p-4 animate-fade-in" onClick={handleOverlayClick}>
-            <div
-                ref={modalContentRef}
-                className={`
-              bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl shadow-black/80
-              w-full max-w-lg max-h-[90vh] overflow-y-auto
-              transform transition-all scale-95 opacity-0 animate-scale-in-and-fade
-              ${className}
-            `}
-                onClick={handleContentClick}
+      <div
+        className="fixed inset-0 bg-black/75 z-50 flex justify-center items-center p-4 animate-fade-in"
+        onClick={handleOverlayClick}
+      >
+        <div
+          ref={modalContentRef}
+          className={`
+            bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl shadow-black/80
+            w-full max-w-lg max-h-[90vh] overflow-y-auto
+            transform transition-all animate-scale-in-and-fade
+            ${className}
+          `}
+          onClick={handleContentClick}
+        >
+          <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800">
+            <h3 className="text-xl font-semibold text-zinc-100">{title}</h3>
+            {/* If you have a custom Button component, use it here.
+                Otherwise, use a plain button as below: */}
+            <button
+              onClick={onClose}
+              type="button"
+              className="p-1.5 rounded-full bg-transparent border-none hover:bg-zinc-800"
+              style={{ outline: "none", border: "none" }}
+              aria-label="Close modal"
             >
-                <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800">
-                    <h3 className="text-xl font-semibold text-zinc-100">{title}</h3>
-                    <Button onClick={onClose} primary={false} small className="!p-1.5 !rounded-full !bg-transparent !border-none hover:bg-zinc-800">
-                        <XCircleIcon className="w-5 h-5 text-zinc-500 hover:text-zinc-300" />
-                    </Button>
-                </div>
-                <div className="p-6">
-                    {children}
-                </div>
-            </div>
+              <XCircleIcon className="w-5 h-5 text-zinc-500 hover:text-zinc-300" />
+            </button>
+          </div>
+          <div className="p-6">{children}</div>
         </div>
+      </div>
     );
-});
+  }
+);
+
+export default CreateDocumentModal;
 
 export const Pill = React.memo(({ text, className = "", icon: IconComponent }) => (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-900/20 text-indigo-300 border border-indigo-800/50 ${className}`}>

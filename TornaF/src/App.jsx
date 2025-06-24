@@ -8,7 +8,7 @@ import Signup from "./pages/Signup.jsx";
 import Login from "./pages/Login.jsx";
 import Logout from "./pages/Logout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import DocumentEdit from "./pages/DocumentEdit.jsx"; // Import the new DocumentEdit component
+import DocumentEdit from "./pages/DocumentEdit.jsx";
 
 export default function App() {
   const location = useLocation();
@@ -16,33 +16,27 @@ export default function App() {
 
   if (authLoading) return <div className="p-4">Checking Authentication...</div>;
 
-  // Prevent logged-in users from visiting login/register
   if (currentUser && ["/login", "/register"].includes(location.pathname)) {
     return <Navigate to="/" replace />;
   }
 
   return (
     <Routes>
-      {/* Layout wraps all child routes with Navbar */}
       <Route path="/" element={<Layout />}>
-        {/* Root Route: Dashboard or Landing */}
         <Route index element={currentUser ? <Dashboard /> : <Landing />} />
-
-        {/* Auth Routes */}
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Signup />} />
-
-        {/* Optional Protected Logout */}
         <Route
           path="logout"
           element={currentUser ? <Logout /> : <Navigate to="/login" replace />}
         />
-
-        {/* Protected Document Edit Route */}
         <Route
-          path="documents/:id/edit" // Define the route with a dynamic ID parameter
+          path="documents/:id/edit"
           element={currentUser ? <DocumentEdit /> : <Navigate to="/login" replace state={{ from: location }} />}
         />
+        <Route path="dashboard" element={currentUser ? <Dashboard /> : <Navigate to="/login" replace />} />
+        {/* Optional: fallback */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Route>
     </Routes>
   );

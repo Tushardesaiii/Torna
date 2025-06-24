@@ -1,29 +1,30 @@
 import express from 'express';
 import {
   createDocument,
+  createStandaloneDocument,
   getProjectDocuments,
   getDocumentById,
   updateDocument,
   deleteDocument
-} from '../controller/document.controller.js'; // Ensure all document controllers are imported
-import { authMiddleware } from '../middleware/auth.middleware.js'; // Assuming you have this middleware
+} from '../controller/document.controller.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// Apply authMiddleware to all routes defined after this line,
-// as all document operations require an authenticated user.
 router.use(authMiddleware);
 
-// Routes for documents within a specific project
+// Standalone document creation (no project)
+router.route('/documents')
+  .post(createStandaloneDocument);
+
+// Project-based document creation and fetch
 router.route('/projects/:projectId/documents')
-  .post(createDocument)      // Create a new document in a project
-  .get(getProjectDocuments); // Get all documents for a specific project
+  .post(createDocument)
+  .get(getProjectDocuments);
 
-// Routes for individual documents (by documentId)
 router.route('/documents/:documentId')
-  .get(getDocumentById)     // Get a specific document by its ID
-  .put(updateDocument)      // Update a specific document by its ID
-  .delete(deleteDocument);  // Delete a specific document by its ID
-
+  .get(getDocumentById)
+  .put(updateDocument)
+  .delete(deleteDocument);
 
 export default router;

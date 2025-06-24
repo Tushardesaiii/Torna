@@ -54,39 +54,58 @@ const DashboardView = React.memo(({ user, onCreateProject, onCreateDocument }) =
 
       {/* Hero Metrics & Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <MetricCard
-          title="Total Words"
-          value={totalWordsWrittenFormatted}
-          icon={BookOpenIcon}
-          color="text-emerald-400"
-          description="Across all your work"
-        />
-        <MetricCard
-          title="Writing Streak"
-          value={writingStreakFormatted}
-          icon={FireIcon}
-          color="text-amber-400"
-          description="Consecutive days writing"
-        />
-        <MetricCard
-          title="Daily Goal"
-          value={`${latestDailyWordCount.words}/${dailyWordGoal} words`}
-          icon={CalendarIcon}
-          color={currentDayGoalAchieved ? "text-indigo-400" : "text-amber-400"}
-          description={currentDayGoalAchieved ? "Goal achieved for today!" : "Keep writing!"}
-        />
-        <Card className="flex flex-col justify-center items-center p-4 bg-zinc-900/50 border-zinc-800">
-          <h3 className="text-lg font-semibold text-zinc-200 mb-3">Quick Actions</h3>
-          <div className="flex flex-col space-y-3 w-full">
-            <Button onClick={onCreateDocument} icon={DocumentTextIcon} primary={false} className="w-full group">
-              New Document
-            </Button>
-            <Button onClick={onCreateProject} icon={SquaresPlusIcon} primary={true} className="w-full group">
-              New Project
-            </Button>
-          </div>
-        </Card>
-      </div>
+  <MetricCard
+    title="Total Words"
+    value={totalWordsWrittenFormatted ?? "0"}
+    icon={BookOpenIcon}
+    color="text-emerald-400"
+    description="Across all your work"
+  />
+  <MetricCard
+    title="Writing Streak"
+    value={writingStreakFormatted ?? "0"}
+    icon={FireIcon}
+    color="text-amber-400"
+    description="Consecutive days writing"
+  />
+  <MetricCard
+    title="Daily Goal"
+    value={
+      latestDailyWordCount?.words !== undefined && dailyWordGoal !== undefined
+        ? `${latestDailyWordCount.words}/${dailyWordGoal} words`
+        : "0/0 words"
+    }
+    icon={CalendarIcon}
+    color={currentDayGoalAchieved ? "text-indigo-400" : "text-amber-400"}
+    description={
+      currentDayGoalAchieved ? "Goal achieved for today!" : "Keep writing!"
+    }
+  />
+  <Card className="flex flex-col justify-center items-center p-4 bg-zinc-900/50 border-zinc-800">
+    <h3 className="text-lg font-semibold text-zinc-200 mb-3">Quick Actions</h3>
+    <div className="flex flex-col space-y-3 w-full">
+      <Button
+        onClick={() => {
+          console.log("Quick Action: New Document clicked");
+          onCreateDocument && onCreateDocument();
+        }}
+        icon={DocumentTextIcon}
+        primary={false}
+        className="w-full group"
+      >
+        New Document
+      </Button>
+      <Button
+        onClick={onCreateProject}
+        icon={SquaresPlusIcon}
+        primary={true}
+        className="w-full group"
+      >
+        New Project
+      </Button>
+    </div>
+  </Card>
+</div>
 
       {/* Daily Goal Progress */}
       <Card className="mb-8 bg-zinc-900/50 border-zinc-800 shadow-lg">

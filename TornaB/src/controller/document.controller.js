@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { Document } from "../models/document.model.js";
 import { Project } from "../models/project.model.js";
 import { User } from "../models/user.model.js"; // Needed for document limits and total words written
+import mongoose from "mongoose";
 
 // Helper function to calculate word count
 const calculateWordCount = (text) => {
@@ -15,86 +16,33 @@ const calculateWordCount = (text) => {
 // @desc    Create a new document within a project
 // @route   POST /api/projects/:projectId/documents
 // @access  Private
-export const createDocument = asyncHandler(async (req, res) => {
-  const { projectId } = req.params; // Get project ID from URL params
-  const { title, content } = req.body;
-  const ownerId = req.user?._id;
+// controller/document.controller.js
 
-  if (!ownerId) {
-    throw new ApiError(401, "Unauthorized: User not logged in.");
+export const createDocument = async (req, res) => {
+  try {
+    const { title } = req.body;
+    const { projectId } = req.params;
+    // You may want to add owner: req.user._id if you use authentication
+    const newDoc = await Document.create({ title, project: projectId, owner: req.user._id });
+    res.status(201).json({ success: true, data: newDoc });
+  } catch (err) {
+    console.error('Error creating document:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
+};
 
-  if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
-    throw new ApiError(400, "Invalid or missing project ID.");
+// For creating a document WITHOUT a project
+export const createStandaloneDocument = async (req, res) => {
+  try {
+    const { title } = req.body;
+    // You may want to add owner: req.user._id if you use authentication
+    const newDoc = await Document.create({ title, owner: req.user._id });
+    res.status(201).json({ success: true, data: newDoc });
+  } catch (err) {
+    console.error('Error creating standalone document:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
-
-  if (!title || title.trim() === "") {
-    throw new ApiError(400, "Document title is required.");
-  }
-
-  // Find the project and ensure user owns it (or is a collaborator, if that's a feature)
-  const project = await Project.findOne({
-    _id: projectId,
-    $or: [{ owner: ownerId }, { collaborators: ownerId }], // Check owner or collaborator
-  });
-
-  if (!project) {
-    throw new new ApiError(404, "Project not found or you don't have access to it.");
-  }
-
-  // Check user's document limit
-  const user = await User.findById(ownerId).select('subscription.documentLimit achievements');
-  if (!user) {
-      throw new ApiError(404, "User not found.");
-  }
-
-  const documentCount = await Document.countDocuments({ owner: ownerId, project: projectId });
-  if (user.subscription.documentLimit !== -1 && documentCount >= user.subscription.documentLimit) {
-      throw new ApiError(403, `You have reached your document limit for this project (${user.subscription.documentLimit} documents). Upgrade your plan to create more.`);
-  }
-
-  const initialWordCount = calculateWordCount(content);
-
-  const document = await Document.create({
-    project: projectId,
-    owner: ownerId,
-    title: title.trim(),
-    content: content || "",
-    wordCount: initialWordCount,
-  });
-
-  if (!document) {
-    throw new ApiError(500, "Failed to create document.");
-  }
-
-  // Add the document reference to the project's documents array
-  project.documents.push(document._id);
-  // The post-save hook on the Document model will handle updating project.currentWordCount
-
-  // Mark the documents array as modified to ensure save hook triggers if necessary
-  project.markModified('documents');
-  await project.save({ validateBeforeSave: false }); // Save without re-validating the whole project
-
-  // Trigger achievement for first document created if applicable
-  if (await Document.countDocuments({ owner: ownerId }) === 1) {
-    const existingAchievement = user.achievements.find(ach => ach.id === "first_document");
-    if (!existingAchievement) {
-      user.achievements.push({
-        id: "first_document",
-        name: "First Document Created",
-        description: "You've written your first document!",
-        icon: "DocumentTextIcon", // Example Heroicon
-        unlockedAt: Date.now(),
-      });
-      user.markModified('achievements');
-      await user.save({ validateBeforeSave: false });
-    }
-  }
-
-  return res
-    .status(201)
-    .json(new ApiResponse(201, document, "Document created successfully."));
-});
+};
 
 // @desc    Get all documents for a specific project
 // @route   GET /api/projects/:projectId/documents
@@ -129,6 +77,13 @@ export const getProjectDocuments = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, documents, "Documents fetched successfully."));
 });
+
+// controller/document.controller.js
+
+
+
+
+
 
 // @desc    Get a single document by ID
 // @route   GET /api/documents/:documentId

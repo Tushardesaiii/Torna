@@ -1,5 +1,8 @@
+// src/pages/Dashboard.jsx
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "../components/AuthContext.jsx";
 
 import SidebarNavigation from "../components/SidebarNavigation.jsx";
@@ -51,6 +54,7 @@ const Dashboard = () => {
     setIsCreatingProject(true);
     setProjectError(null);
     try {
+      // Replace with real API call in production
       const response = await new Promise(resolve => setTimeout(() => {
         const newProject = {
           _id: `proj-${Date.now()}`,
@@ -66,7 +70,6 @@ const Dashboard = () => {
       }, 1000));
 
       setAvailableProjects(prevProjects => [...(prevProjects || []), response.data]);
-
       setIsCreateProjectModalOpen(false);
       setNewProjectTitle("");
       setNewProjectDescription("");
@@ -78,55 +81,51 @@ const Dashboard = () => {
     }
   }, [newProjectTitle, newProjectDescription]);
 
-  const handleCreateDocument = useCallback(async () => {
-    if (!newDocumentTitle.trim()) {
-      setDocumentError("Document title is required.");
+const handleCreateDocument = useCallback(async () => {
+  if (!newDocumentTitle.trim()) {
+    setDocumentError("Document title is required.");
+    return;
+  }
+  setIsCreatingDocument(true);
+  setDocumentError(null);
+
+  try {
+    let response;
+    if (newDocumentProjectId) {
+      // If a project is selected, use the project route
+      response = await axios.post(
+        `http://localhost:8000/api/v1/projects/${newDocumentProjectId}/documents`,
+        { title: newDocumentTitle },
+        { withCredentials: true }
+      );
+    } else {
+      // No project selected, use the standalone route
+      response = await axios.post(
+        `http://localhost:8000/api/v1/documents`,
+        { title: newDocumentTitle },
+        { withCredentials: true }
+      );
+    }
+
+    const newDocId = response.data?.data?._id;
+    if (!newDocId) {
+      setDocumentError("Failed to get new document ID from server.");
+      setIsCreatingDocument(false);
       return;
     }
-    setIsCreatingDocument(true);
-    setDocumentError(null);
-    try {
-      const response = await new Promise(resolve => setTimeout(() => {
-        const newDocument = {
-          id: `doc-${Date.now()}`, // Use ._id if you're using Mongo-style documents
-          title: newDocumentTitle,
-          projectId: newDocumentProjectId || null,
-          createdAt: new Date().toISOString(),
-        };
-        resolve({ data: newDocument });
-      }, 1000));
-
-      console.log("New document created:", response.data);
-
-      setIsCreateDocumentModalOpen(false);
-      setNewDocumentTitle("");
-      setNewDocumentProjectId("");
-
-      // ✅ Navigate to document edit page
-      navigate(`/documents/${response.data.id}/edit`);
-    } catch (err) {
-      console.error("Error creating document:", err);
-      setDocumentError("Failed to create document. Please try again.");
-    } finally {
-      setIsCreatingDocument(false);
-    }
-  }, [newDocumentTitle, newDocumentProjectId, navigate]);
-
-  useEffect(() => {
-    if (!isCreateProjectModalOpen) {
-      setProjectError(null);
-      setNewProjectTitle("");
-      setNewProjectDescription("");
-    }
-  }, [isCreateProjectModalOpen]);
-
-  useEffect(() => {
-    if (!isCreateDocumentModalOpen) {
-      setDocumentError(null);
-      setNewDocumentTitle("");
-      setNewDocumentProjectId("");
-    }
-  }, [isCreateDocumentModalOpen]);
+    setIsCreateDocumentModalOpen(false);
+    setNewDocumentTitle("");
+    setNewDocumentProjectId("");
+    navigate(`/documents/${newDocId}/edit`);
+  } catch (err) {
+    console.error("Error creating document:", err);
+    setDocumentError(
+      err.response?.data?.message || "Failed to create document. Please try again."
+    );
+  } finally {
+    setIsCreatingDocument(false);
+  }
+}, [newDocumentTitle, newDocumentProjectId, navigate]);
 
   return (
     <div className="min-h-screen flex bg-black text-zinc-100">
@@ -141,7 +140,10 @@ const Dashboard = () => {
         <DashboardView
           user={user}
           onCreateProject={() => setIsCreateProjectModalOpen(true)}
-          onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
+          onCreateDocument={() => {
+            console.log("setIsCreateDocumentModalOpen(true) called"); // <-- LOG
+            setIsCreateDocumentModalOpen(true);
+          }}
         />
       )}
       {currentView === "projects" && <ProjectsView />}
@@ -161,6 +163,7 @@ const Dashboard = () => {
         handleCreateProject={handleCreateProject}
       />
 
+      {console.log("Rendering CreateDocumentModal, isCreateDocumentModalOpen:", isCreateDocumentModalOpen)}
       <CreateDocumentModal
         isOpen={isCreateDocumentModalOpen}
         onClose={() => setIsCreateDocumentModalOpen(false)}
