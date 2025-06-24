@@ -8,6 +8,7 @@ import Signup from "./pages/Signup.jsx";
 import Login from "./pages/Login.jsx";
 import Logout from "./pages/Logout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import DocumentEdit from "./pages/DocumentEdit.jsx"; // Import the new DocumentEdit component
 
 export default function App() {
   const location = useLocation();
@@ -35,6 +36,12 @@ export default function App() {
         <Route
           path="logout"
           element={currentUser ? <Logout /> : <Navigate to="/login" replace />}
+        />
+
+        {/* Protected Document Edit Route */}
+        <Route
+          path="documents/:id/edit" // Define the route with a dynamic ID parameter
+          element={currentUser ? <DocumentEdit /> : <Navigate to="/login" replace state={{ from: location }} />}
         />
       </Route>
     </Routes>
