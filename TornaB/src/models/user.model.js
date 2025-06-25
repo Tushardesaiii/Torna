@@ -26,31 +26,45 @@ const userSchema = new Schema(
       trim: true,
       index: true,
     },
-  
-    preferences: {
-      theme: { type: String, enum: ["dark", "light"], default: "dark" }, // Explicit enum for themes
-      editorFont: { type: String, default: "Inter" }, // Changed from 'font' for clarity
-      keyboardShortcuts: { type: Boolean, default: true }, // Added for UI (mocked in frontend)
-      notificationEmails: { type: Boolean, default: true }, // Changed from 'notifications' for clarity
-      weeklyReports: { type: Boolean, default: false }, // Added for UI (mocked in frontend)
+
+    password: {
+      type: String,
+      required: [true, "Password is required"],
     },
+
+    refreshToken: { type: String },
+    isVerified: { type: Boolean, default: false },
+    resetToken: { type: String },
+
+    socialAccounts: {
+      google: { type: String },
+      github: { type: String },
+    },
+
+    preferences: {
+      theme: { type: String, enum: ["dark", "light"], default: "dark" },
+      editorFont: { type: String, default: "Inter" },
+      keyboardShortcuts: { type: Boolean, default: true },
+      notificationEmails: { type: Boolean, default: true },
+      weeklyReports: { type: Boolean, default: false },
+    },
+
     subscription: {
-      type: { type: String, enum: ["free", "pro", "premium"], default: "free" }, // Added 'premium' as an option
+      type: { type: String, enum: ["free", "pro", "premium"], default: "free" },
       renewalDate: { type: Date },
       paymentProviderId: { type: String },
-      // New: Add a way to store actual feature limits based on plan
-      projectLimit: { type: Number, default: 1 }, // Default for 'free'
-      documentLimit: { type: Number, default: 5 }, // Default for 'free'
-      storageGB: { type: Number, default: 0.1 }, // Example: 100MB for free tier
-      features: [{ type: String }], // Array of strings, e.g., ["advanced_editor", "version_history", "ai_assistant"]
+      projectLimit: { type: Number, default: 1 },
+      documentLimit: { type: Number, default: 5 },
+      storageGB: { type: Number, default: 0.1 },
+      features: [{ type: String }],
     },
-    writingStreak: { type: Number, default: 0 },
-    lastActive: { type: Date, default: Date.now }, // Set default to current time for new users
-    lastLogin: { type: Date }, // Keep lastLogin for specific login event tracking
-    totalWordsWritten: { type: Number, default: 0 },
 
-    // New: Daily Word Goal and History
-    dailyWordGoal: { type: Number, default: 500 }, // Default daily goal
+    dailyWordGoal: { type: Number, default: 500 },
+    totalWordsWritten: { type: Number, default: 0 },
+    writingStreak: { type: Number, default: 0 },
+    lastActive: { type: Date, default: Date.now },
+    lastLogin: { type: Date },
+
     wordCountHistory: [
       {
         date: { type: Date, required: true },
@@ -59,23 +73,16 @@ const userSchema = new Schema(
       },
     ],
 
-    // New: Notifications (more detailed structure)
     notifications: [
       {
-        _id: false, // Don't generate _id for subdocuments in array
+        _id: false,
         id: {
           type: String,
           default: () => new mongoose.Types.ObjectId().toString(),
-        }, // Manual ID for stable client-side keys
+        },
         type: {
           type: String,
-          enum: [
-            "system",
-            "collaboration",
-            "achievement",
-            "billing",
-            "promotion",
-          ],
+          enum: ["system", "collaboration", "achievement", "billing", "promotion"],
           required: true,
         },
         message: { type: String, required: true },
@@ -84,58 +91,41 @@ const userSchema = new Schema(
       },
     ],
 
-    // New: Achievements (more detailed structure)
     achievements: [
       {
-        _id: false, // Don't generate _id for subdocuments in array
-        // REMOVED unique: true from here.
-        // The 'id' field is unique per achievement within THIS user's array,
-        // but not globally unique across all users.
-        id: { type: String, required: true }, // e.g., "first_project", "10k_words"
+        _id: false,
+        id: { type: String, required: true },
         name: { type: String, required: true },
         description: { type: String, required: true },
         unlockedAt: { type: Date, default: Date.now },
-        icon: { type: String }, // Storing Heroicon name or path (e.g., 'RocketLaunchIcon')
+        icon: { type: String },
       },
     ],
 
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-    },
-    refreshToken: {
-      type: String,
-    },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    resetToken: {
-      type: String,
-    },
-    socialAccounts: {
-      google: { type: String },
-      github: { type: String },
-    },
+    // === Relations (for dashboard hydration) ===
+    projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "Project" }],
+    documents: [{ type: mongoose.Schema.Types.ObjectId, ref: "Document" }],
   },
   {
     timestamps: true,
   }
 );
 
-// Password hashing
+// ====== Middleware & Methods ======
+
+// Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// Password check
+// Compare password
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-// Generate Access Token
+// Generate JWT Access Token
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
@@ -152,7 +142,7 @@ userSchema.methods.generateAccessToken = function () {
   );
 };
 
-// Generate Refresh Token
+// Generate JWT Refresh Token
 userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {

@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import { HiOutlineEye, HiOutlineEyeOff } from "react-icons/hi";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { useAuth } from "../components/AuthContext";
 
 function Signup() {
+  const navigate = useNavigate();
+  const { refreshUser } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -37,7 +41,6 @@ function Signup() {
       setIsSubmitting(true);
       setIsSuccess(false);
 
-      // Send JSON (not FormData) as per your backend logic
       const response = await axios.post(
         "http://localhost:8000/api/v1/users/register",
         { fullName, username, email, password },
@@ -46,7 +49,9 @@ function Signup() {
 
       toast.success("Registration successful!");
       setIsSuccess(true);
-      console.log("Registered user:", response.data);
+
+      await refreshUser(); // Refresh user state after token set
+      navigate("/"); // Redirect to dashboard
     } catch (err) {
       console.error("Registration failed:", err);
       toast.error(err?.response?.data?.message || "Registration failed");
@@ -59,8 +64,7 @@ function Signup() {
     <div className="min-h-screen flex items-center justify-center bg-white relative overflow-hidden">
       <Toaster position="top-right" reverseOrder={false} />
 
-      <div className="absolute -top-14 w-600 h-[497px] bg-gradient-to-br from-sky-300 via-blue-400 to-indigo-500
- rounded-b-[90%] rounded-tr-[90%]"></div>
+      <div className="absolute -top-14 w-600 h-[497px] bg-gradient-to-br from-sky-300 via-blue-400 to-indigo-500 rounded-b-[90%] rounded-tr-[90%]"></div>
 
       <div className="relative top-8 w-full max-w-md">
         <form
@@ -138,8 +142,6 @@ function Signup() {
             </div>
           </div>
 
-          {/* No avatar or cover image fields, as per your backend */}
-
           <label className="inline-flex items-center gap-2 text-sm text-gray-600 mb-6">
             <input
               type="checkbox"
@@ -156,45 +158,7 @@ function Signup() {
               ${isSuccess ? "bg-green-500 border-green-500" : ""}
             `}
           >
-            {isSubmitting ? (
-              <svg
-                className="animate-spin h-5 w-5 mx-auto text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                ></path>
-              </svg>
-            ) : isSuccess ? (
-              <svg
-                className="h-6 w-6 mx-auto text-white"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                ></path>
-              </svg>
-            ) : (
-              "Sign Up"
-            )}
+            {isSubmitting ? "Signing up..." : "Sign Up"}
           </button>
 
           <p className="text-center text-gray-700 mt-8 text-sm">

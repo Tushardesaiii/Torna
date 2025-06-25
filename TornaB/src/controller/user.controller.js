@@ -34,59 +34,55 @@ const cookieOptions = {
 
 // REGISTER (Signup)
 export const registerUser = asyncHandler(async (req, res) => {
-  const { fullName, email, username, password } = req.body;
+  const { fullName, username, email, password } = req.body;
 
-  if ([fullName, email, username, password].some((field) => !field?.trim())) {
+  if (!fullName || !username || !email || !password) {
     throw new ApiError(400, "All fields are required");
   }
 
-  const existedUser = await User.findOne({
-    $or: [{ username: username.toLowerCase() }, { email: email.toLowerCase() }]
-  });
-
-  if (existedUser) {
-    throw new ApiError(409, "User with email or username already exists");
+  const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+  if (existingUser) {
+    throw new ApiError(409, "User with this email or username already exists");
   }
 
-  // Create the user. Mongoose defaults will handle new fields.
   const user = await User.create({
     fullName,
-    email: email.toLowerCase(),
-    username: username.toLowerCase(),
+    username,
+    email,
     password,
-    // When a new user registers, initialize their daily word goal history for today
-    wordCountHistory: [{ date: new Date().setHours(0, 0, 0, 0), words: 0, goalAchieved: false }]
   });
 
-  const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken -resetToken -socialAccounts -subscription.paymentProviderId -subscription.renewalDate"
-  );
+  const accessToken = user.generateAccessToken();
+  const refreshToken = user.generateRefreshToken();
 
-  if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering the user");
-  }
-
-  // Generate tokens for immediate login after registration
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
-
-  // Update lastLogin for the newly registered user
-  user.lastLogin = Date.now();
+  user.refreshToken = refreshToken;
   await user.save({ validateBeforeSave: false });
 
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: false, // set to true in production
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000, // 15 minutes
+  });
 
-  return res
-    .status(201)
-    .cookie("accessToken", accessToken, cookieOptions)
-    .cookie("refreshToken", refreshToken, cookieOptions)
-    .json(
-      new ApiResponse(
-        201,
-        { user: createdUser, accessToken, refreshToken }, // Optionally send tokens back
-        "User registered successfully"
-      )
-    );
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: false, // set to true in production
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "User registered successfully",
+    data: {
+      _id: user._id,
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+    },
+  });
 });
-
 // LOGIN (Signin)
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
@@ -216,37 +212,57 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
 
 // GET CURRENT USER
 export const getCurrentUser = asyncHandler(async (req, res) => {
-  // Assuming you have middleware that sets req.user after verifying JWT
-  if (!req.user) {
+  if (!req.user?._id) {
     throw new ApiError(401, "Not authenticated");
   }
 
-  // Fetch the user again to ensure we get the latest data and perform a clean select
-  const user = await User.findById(req.user._id).select(
-    "-password -refreshToken -resetToken -socialAccounts -subscription.paymentProviderId -subscription.renewalDate"
-  );
+  const today = new Date().setHours(0, 0, 0, 0);
+
+  const user = await User.findById(req.user._id)
+    .select("-password -refreshToken -resetToken -socialAccounts -subscription.paymentProviderId -subscription.renewalDate")
+    .populate({
+      path: "projects",
+      select: "title description createdAt updatedAt",
+    })
+    .populate({
+      path: "documents",
+      select: "title content createdAt updatedAt project",
+    })
+    .lean();
 
   if (!user) {
     throw new ApiError(404, "User not found after authentication");
   }
 
-  // Ensure wordCountHistory has an entry for today if not present
-  const today = new Date().setHours(0, 0, 0, 0);
-  const todayEntry = user.wordCountHistory.find(entry => new Date(entry.date).setHours(0,0,0,0) === today);
-  if (!todayEntry) {
+  // Inject accessToken back into the user object for frontend usage
+  const accessToken =
+    req.header("Authorization")?.replace("Bearer ", "") || req.cookies?.accessToken;
+  user.token = accessToken;
+
+  // Ensure word count entry for today
+  const hasTodayEntry = user.wordCountHistory?.some(
+    (entry) => new Date(entry.date).setHours(0, 0, 0, 0) === today
+  );
+
+  if (!hasTodayEntry) {
+    await User.findByIdAndUpdate(req.user._id, {
+      $push: {
+        wordCountHistory: {
+          date: today,
+          words: 0,
+          goalAchieved: false,
+        },
+      },
+    });
     user.wordCountHistory.push({ date: today, words: 0, goalAchieved: false });
-    await user.save({ validateBeforeSave: false }); // Save the updated history
   }
 
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      user, // Send the cleaned user object
-      "User details fetched successfully"
-    )
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Dashboard data loaded successfully"));
 });
+
+
 
 // --- NEW CONTROLLERS ---
 
